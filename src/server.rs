@@ -166,10 +166,13 @@ impl rustls_server_config_builder {
     #[no_mangle]
     pub extern "C" fn rustls_server_config_builder_set_client_verifier(
         builder: *mut rustls_server_config_builder,
-        verifier: *const rustls_client_cert_verifier,
+        verifier: *const rustls_client_cert_verifier, // TODO(@cpu): I think this needs to be *mut
     ) {
         ffi_panic_boundary! {
         let builder: &mut ServerConfigBuilder = try_mut_from_ptr!(builder);
+        // TODO(@cpu): I think this should be try_box_from_ptr!() and then turned into an Arc
+        //             with .boxed() but this seems to create an invalid pointer error from free()
+        //             somewhere???
         let verifier: Arc<AllowAnyAuthenticatedClient> = try_arc_from_ptr!(verifier);
         builder.verifier = verifier;
         }
