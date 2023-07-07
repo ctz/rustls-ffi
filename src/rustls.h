@@ -182,6 +182,8 @@ typedef struct rustls_certified_key rustls_certified_key;
  */
 typedef struct rustls_client_cert_verifier rustls_client_cert_verifier;
 
+typedef struct rustls_client_cert_verifier_builder rustls_client_cert_verifier_builder;
+
 /**
  * Alternative to `rustls_client_cert_verifier` that allows connections
  * with or without a client certificate. If the client offers a certificate,
@@ -946,22 +948,37 @@ rustls_result rustls_root_cert_store_add_pem(struct rustls_root_cert_store *stor
 void rustls_root_cert_store_free(struct rustls_root_cert_store *store);
 
 /**
- * Create a new client certificate verifier for the root store. The verifier
- * can be used in several rustls_server_config instances. Must be freed by
- * the application when no longer needed. See the documentation of
- * rustls_client_cert_verifier_free for details about lifetime.
+ * Create a new client certificate verifier builder for the root store.
+ *
  * This copies the contents of the rustls_root_cert_store. It does not take
  * ownership of the pointed-to memory.
+ *
+ * This object can then be used to load any CRLs.
+ *
+ * Once that is complete, convert it into a real `rustls_client_cert_verifier`
+ * by calling `rustls_client_cert_verifier_new()`.
+ *
+ * XXX: this needs a _free()
  */
-struct rustls_client_cert_verifier *rustls_client_cert_verifier_new(const struct rustls_root_cert_store *store);
+struct rustls_client_cert_verifier_builder *rustls_client_cert_verifier_builder_new(const struct rustls_root_cert_store *store);
 
 /**
  * TODO(@cpu): write docstring..
  */
-rustls_result rustls_client_cert_verifier_new_with_crls(struct rustls_client_cert_verifier **verifier_out,
-                                                        const struct rustls_root_cert_store *store,
-                                                        const uint8_t *crl_pem,
-                                                        size_t crl_pem_len);
+rustls_result rustls_client_cert_verifier_builder_add_crl(struct rustls_client_cert_verifier_builder *verifier,
+                                                          const uint8_t *crl_pem,
+                                                          size_t crl_pem_len);
+
+/**
+ * Create a new client certificate verifier from a builder.
+ *
+ * The builder is consumed and is no longer valid.
+ *
+ * The verifier can be used in several rustls_server_config instances. Must be freed by
+ * the application when no longer needed. See the documentation of
+ * rustls_client_cert_verifier_free for details about lifetime.
+ */
+const struct rustls_client_cert_verifier *rustls_client_cert_verifier_new(struct rustls_client_cert_verifier_builder *builder);
 
 /**
  * "Free" a verifier previously returned from
@@ -971,7 +988,7 @@ rustls_result rustls_client_cert_verifier_new_with_crls(struct rustls_client_cer
  * consider this pointer unusable after "free"ing it.
  * Calling with NULL is fine. Must not be called twice with the same value.
  */
-void rustls_client_cert_verifier_free(struct rustls_client_cert_verifier *verifier);
+void rustls_client_cert_verifier_free(const struct rustls_client_cert_verifier *verifier);
 
 /**
  * Create a new rustls_client_cert_verifier_optional for the root store. The

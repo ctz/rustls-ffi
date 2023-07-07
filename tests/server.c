@@ -299,6 +299,8 @@ main(int argc, const char **argv)
     client_cert_root_store = rustls_root_cert_store_new();
     rustls_root_cert_store_add_pem(client_cert_root_store, (uint8_t *)certbuf, certbuf_len, true);
 
+    rustls_client_cert_verifier_builder *builder = rustls_client_cert_verifier_builder_new(client_cert_root_store);
+
     char* auth_crl = getenv("AUTH_CRL");
     char crlbuf[10000];
     size_t crlbuf_len;
@@ -309,14 +311,13 @@ main(int argc, const char **argv)
         goto cleanup;
       }
 
-      result = rustls_client_cert_verifier_new_with_crls(
-        &client_cert_verifier, client_cert_root_store, (uint8_t *)crlbuf, certbuf_len);
+      result = rustls_client_cert_verifier_builder_add_crl(builder, (uint8_t *)crlbuf, certbuf_len);
       if(result != RUSTLS_RESULT_OK) {
         goto cleanup;
       }
-    } else {
-      client_cert_verifier = rustls_client_cert_verifier_new(client_cert_root_store);
     }
+
+    const rustls_client_cert_verifier *client_cert_verifier = rustls_client_cert_verifier_new(builder);
     rustls_server_config_builder_set_client_verifier(config_builder, client_cert_verifier);
   }
 
